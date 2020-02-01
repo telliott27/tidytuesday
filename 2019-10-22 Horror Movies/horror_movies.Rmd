@@ -1,0 +1,85 @@
+---
+title: "Horror Movie Ratings"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+library(here)
+
+horror_movies <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-10-22/horror_movies.csv")
+```
+
+
+```{r}
+summary(horror_movies)
+```
+
+
+```{r}
+horror_movies %>% 
+  mutate(release_rdate = dmy(release_date)) %>% 
+  filter(!is.na(release_rdate)) %>% 
+  mutate(month = floor_date(release_rdate, "month")) %>% 
+  group_by(month) %>% 
+  summarize(movies = n(),
+            avg_rating = mean(review_rating, na.rm=TRUE)) %>% 
+  ggplot(aes(x = month, y = avg_rating)) +
+  geom_line(size = 1, color = "blue")
+```
+
+```{r}
+horror_movies %>% 
+  mutate(release_rdate = dmy(release_date)) %>% 
+  filter(!is.na(release_rdate)) %>% 
+  ggplot(aes(x = release_rdate, y = review_rating)) +
+  geom_point(color = "blue", alpha = 0.5)
+```
+
+
+```{r}
+horror_movies %>% 
+  mutate(release_rdate = dmy(release_date)) %>% 
+  filter(!is.na(release_rdate)) %>% 
+  mutate(month = floor_date(release_rdate, "month")) %>% 
+  group_by(month) %>% 
+  summarize(movies = n(),
+            avg_rating = mean(review_rating, na.rm=TRUE)) %>% 
+  ggplot(aes(x = month, y = movies)) +
+  geom_col(size = 1, fill = "blue")
+```
+
+
+
+```{r}
+temp<-horror_movies %>% 
+    mutate(release_rdate = dmy(release_date),
+           id = row_number()) %>% 
+  filter(!is.na(release_rdate)) %>% 
+  select(id, title, genres, release_rdate, review_rating) %>% 
+  mutate(genre_split = str_split(genres, pattern = fixed("|"))) %>% 
+  unnest(genre_split) %>% 
+  mutate(genre_split = str_trim(genre_split, "both"))
+top_genres <- temp %>% 
+  count(genre_split) %>% 
+  arrange(desc(n)) %>% 
+  slice(1:8)
+temp %>% 
+  filter(genre_split %in% top_genres$genre_split) %>% 
+  mutate(month = floor_date(release_rdate, "quarter")) %>% 
+  group_by(month, genre_split) %>% 
+  summarize(movies = n(),
+            avg_rating = mean(review_rating, na.rm=TRUE)) %>% 
+  filter(genre_split != "Horror") %>% 
+  group_by(month) %>% 
+  mutate(percent = movies / sum(movies)) %>%  ungroup() %>% 
+  ggplot(aes(x = month, y = percent, fill = genre_split)) +
+  geom_col() +
+  scale_fill_brewer(type = "qual")
+```
+
+
+
+

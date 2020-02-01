@@ -1,0 +1,73 @@
+---
+title: "Spotify Songs"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  fig.retina = 4
+)
+library(tidyverse)
+library(lubridate)
+library(here)
+```
+
+
+```{r}
+# get the data
+spotify_songs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-01-21/spotify_songs.csv')
+```
+
+```{r}
+spotify_songs
+```
+
+```{r}
+spotify_songs %>% 
+  count(track_artist) %>% 
+  arrange(desc(n)) %>% 
+  knitr::kable()
+```
+
+
+```{r}
+spotify_songs %>% 
+  mutate(release_date = ymd(track_album_release_date)) %>% 
+  mutate(release_year = floor_date(release_date, "year")) %>% 
+  group_by(release_year, playlist_genre) %>% 
+  summarize(songs = n()) %>% 
+  filter(release_year >= ymd("2000-01-01")) %>% 
+  group_by(release_year) %>% 
+  mutate(percent = songs / sum(songs)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = release_year, y = percent, fill = playlist_genre)) +
+  geom_col()
+```
+
+
+
+```{r}
+monthly_stats <- spotify_songs %>% 
+  filter(playlist_genre == "pop") %>% 
+  mutate(release_date = ymd(track_album_release_date)) %>% 
+  mutate(release_month = floor_date(release_date, "month")) %>% 
+  group_by(release_month) %>% 
+  summarize(
+    songs = n(),
+    danceability = mean(danceability),
+    energy = mean(energy),
+    duration_sec = mean(duration_ms/1000),
+    tempo = mean(tempo),
+    speechiness = mean(speechiness)
+  ) %>% 
+  filter(release_month >= ymd("2000-01-01"))
+```
+
+```{r}
+monthly_stats %>% 
+  ggplot(aes(x = release_month, y = energy)) +
+  geom_line() +
+  geom_smooth()
+```
+
